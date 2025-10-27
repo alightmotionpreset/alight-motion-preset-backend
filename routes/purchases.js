@@ -1,30 +1,38 @@
 import { Router } from "express";
-import { v4 as uuidv4 } from "uuid";
 import db from "../db.js";
 
 const router = Router();
 
-router.get("/", async (req, res) => {
-  const { rows } = await db.query("SELECT * FROM am_purchases ORDER BY id DESC");
-  res.json(rows);
+const ensureTable = async () => {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS am_purchases (
+      id SERIAL PRIMARY KEY,
+      buyerName TEXT,
+      presetId INTEGER,
+      status TEXT DEFAULT 'pending'
+    );
+  `);
+};
+
+router.get("/", async (_, res) => {
+  await ensureTable();
+  const result = await db.query("SELECT * FROM am_purchases ORDER BY id ASC");
+  res.json(result.rows);
 });
 
 router.post("/", async (req, res) => {
-  const id = uuidv4();
+  await ensureTable();
   const { buyerName, presetId } = req.body;
-  await db.query(
-    "INSERT INTO am_purchases (id, buyerName, presetId, status) VALUES ($1,$2,$3,'pending')",
-    [id, buyerName, presetId]
-  );
-  const { rows } = await db.query("SELECT * FROM am_purchases ORDER BY id DESC");
-  res.status(201).json(rows);
+  await db.query("INSERT INTO am_purchases (buyerName, presetId) VALUES ($1,$2)", [buyerName, presetId]);
+  const result = await db.query("SELECT * FROM am_purchases ORDER BY id ASC");
+  res.json(result.rows);
 });
 
-router.patch("/:id/approve", async (req, res) => {
-  const { id } = req.params;
-  await db.query("UPDATE am_purchases SET status='approved' WHERE id=$1", [id]);
-  const { rows } = await db.query("SELECT * FROM am_purchases ORDER BY id DESC");
-  res.json(rows);
+router.put("/:id/approve", async (req, res) => {
+  await ensureTable();
+  await db.query("UPDATE am_purchases SET status='approved' WHERE id=$1", [req.params.id]);
+  const result = await db.query("SELECT * FROM am_purchases ORDER BY id ASC");
+  res.json(result.rows);
 });
 
 export default router;
