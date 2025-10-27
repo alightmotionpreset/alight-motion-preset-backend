@@ -1,57 +1,42 @@
-import { Router } from 'express';
-import { v4 as uuidv4 } from 'uuid';
-import db from '../db.js';
+import { Router } from "express";
+import { v4 as uuidv4 } from "uuid";
+import db from "../db.js";
 
 const router = Router();
 
-// GET /api/presets
-router.get('/', (req, res) => {
-  res.json(db.data.presets);
+router.get("/", async (req, res) => {
+  const { rows } = await db.query("SELECT * FROM am_presets ORDER BY name");
+  res.json(rows);
 });
 
-// POST /api/presets
-router.post('/', async (req, res) => {
+router.post("/", async (req, res) => {
   const { name, categoryId, price, imageUrl, presetLink } = req.body;
-  const newPreset = {
-    id: uuidv4(),
-    name,
-    categoryId,
-    price: Number(price),
-    imageUrl,
-    presetLink,
-    likes: 0
-  };
-  db.data.presets.push(newPreset);
-  await db.write();
-  res.status(201).json(db.data.presets);
+  const id = uuidv4();
+  await db.query(
+    "INSERT INTO am_presets (id, name, categoryId, price, imageUrl, likes, presetLink) VALUES ($1,$2,$3,$4,$5,0,$6)",
+    [id, name, categoryId, price, imageUrl, presetLink]
+  );
+  const { rows } = await db.query("SELECT * FROM am_presets ORDER BY name");
+  res.status(201).json(rows);
 });
 
-// DELETE /api/presets/:id
-router.delete('/:id', async (req, res) => {
+router.delete("/:id", async (req, res) => {
   const { id } = req.params;
-  db.data.presets = db.data.presets.filter(p => p.id !== id);
-  await db.write();
-  res.json(db.data.presets);
+  await db.query("DELETE FROM am_presets WHERE id=$1", [id]);
+  const { rows } = await db.query("SELECT * FROM am_presets ORDER BY name");
+  res.json(rows);
 });
 
-// PATCH /api/presets/:id/like
-router.patch('/:id/like', async (req, res) => {
-    const { id } = req.params;
-    const { action } = req.body; // 'like' or 'unlike'
-    const preset = db.data.presets.find(p => p.id === id);
-
-    if (preset) {
-        if (action === 'like') {
-            preset.likes += 1;
-        } else if (action === 'unlike') {
-            preset.likes = Math.max(0, preset.likes - 1);
-        }
-        await db.write();
-        res.json(db.data.presets);
-    } else {
-        res.status(404).json({ message: 'Preset not found' });
-    }
+router.patch("/:id/like", async (req, res) => {
+  const { id } = req.params;
+  const { action } = req.body;
+  const { rows } = await db.query("SELECT * FROM am_presets WHERE id=$1", [id]);
+  if (rows.length === 0) return res.status(404).json({ message: "Preset not found" });
+  const preset = rows[0];
+  const newLikes = action === "like" ? preset.likes + 1 : Math.max(0, preset.likes - 1);
+  await db.query("UPDATE am_presets SET likes=$1 WHERE id=$2", [newLikes, id]);
+  const { rows: updated } = await db.query("SELECT * FROM am_presets ORDER BY name");
+  res.json(updated);
 });
-
 
 export default router;
