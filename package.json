@@ -1,20 +1,19 @@
 {
   "name": "alight-motion-backend",
   "version": "1.0.0",
-  "description": "Render-ready backend for Alight Motion Preset Store.",
   "main": "server.js",
   "type": "module",
-  "engines": {
-    "node": "18.x"
-  },
   "scripts": {
     "start": "node server.js"
+  },
+  "engines": {
+    "node": "18.x"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "pg": "^8.11.3",
-    "uuid": "^9.0.1"
+    "pg": "^8.11.3"
   }
 }
